@@ -1,6 +1,9 @@
 import sys
+import os
 
-from functions_run import run_read_config
+from functions_run import check_rundir
+from functions_run import check_scriptdir
+from functions_run import read_config
 from functions_run import parallelize_lst_file
 from functions_run import parallelize_nml_file
 from functions_run import run_remotec
@@ -8,18 +11,20 @@ from functions_run import merge_faulty_spectra
 from functions_run import merge_output
 from functions_run import remove_file_list
 
-try:
-    config_file = sys.argv[1]
-except IndexError:
-    sys.exit("provide settings file as command line argument")
+# current working directory (must be RemoTeC rundir)
+rundir = os.getcwd()
+check_rundir.main(rundir)
 
-config = run_read_config.read_create_config(config_file)
-rundir = config["rundir"]
-remotec_path = config["remotec_path"]
+# location of this python script (contains settings.ini)
+scriptdir = os.path.dirname(__file__)
+check_scriptdir.main(scriptdir)
+
+# get settings
+config = read_config.main(
+    os.path.join(scriptdir, "settings.ini"))
+remotec_path = os.path.join(config["remotec_path"], "RemoTeC_create")
 cores = config["cores"]
-input_file = config["input_file"]
-output_atm_file = config["output_atm_file"]
-output_l1b_file = config["output_l1b_file"]
+scheduler = config["scheduler"]
 
 print("creating parallel input files...")
 parallel_lst_file_list = parallelize_lst_file.main(
@@ -30,12 +35,14 @@ parallel_syn_settings_file_list = parallelize_nml_file.main(
     f"{rundir}/INI/syn_create.nml", cores)
 
 print("running RemoTeC. This may take a while...")
-run_remotec.default(rundir, remotec_path, parallel_lst_file_list)
+run_remotec.main(rundir, remotec_path, parallel_lst_file_list, scheduler)
 
 print("merging output files...")
 parallel_faulty_spectra_list = merge_faulty_spectra.main(rundir)
-parallel_atm_list = merge_output.main(input_file, output_atm_file, cores)
-parallel_l1b_list = merge_output.main(input_file, output_l1b_file, cores)
+parallel_atm_list = merge_output.main(
+    "INPUT/RTC_INP_DATA.nc", "SYNTH_SPECTRA/ATM_DATA.nc", cores)
+parallel_l1b_list = merge_output.main(
+    "INPUT/RTC_INP_DATA.nc", "SYNTH_SPECTRA/L1B_DATA.nc", cores)
 
 print("removing parallel input files...")
 remove_file_list.main(parallel_lst_file_list)
