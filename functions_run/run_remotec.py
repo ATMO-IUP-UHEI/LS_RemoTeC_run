@@ -63,7 +63,7 @@ def condor(rundir, remotec_path, lst_file_list):
 
 
 def slurm(rundir, remotec_path, lst_file_list):
-    print("slurm time")
+    print("using scheduler slurm")
     os.system(f"mkdir {rundir}/slurm")
     processes = []
     for i, lst_file in enumerate(lst_file_list):
