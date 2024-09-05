@@ -13,6 +13,8 @@ def main(rundir, remotec_path, lst_file_list, scheduler):
             func = default
         case "condor":
             func = condor
+        case "slurm":
+            func = slurm
         case _:
             sys.exit(f"scheduler {scheduler} invalid.")
 
@@ -58,3 +60,27 @@ def condor(rundir, remotec_path, lst_file_list):
             if line.startswith('Total for query: 0 jobs;'):
                 done = True
         time.sleep(10)
+
+
+def slurm(rundir, remotec_path, lst_file_list):
+    print("slurm time")
+    os.system(f"mkdir {rundir}/slurm")
+    processes = []
+    for i, lst_file in enumerate(lst_file_list):
+        # i starts at 0
+        run_id = str(i+1)
+        job_file = f"{rundir}/slurm/job_file_{run_id:>06}.sh"
+        outdir = f"{rundir}/slurm"
+        with open(job_file, "w") as file:
+            file.writelines("#!/bin/bash\n")
+            file.writelines("#SBATCH --partition=single\n")
+            file.writelines("#SBATCH --ntasks=1\n")
+            file.writelines("#SBATCH --time=6:00:00\n")
+            file.writelines("#SBATCH --mem=8gb\n")
+            file.writelines(f"#SBATCH --output={outdir}/out_{run_id:>06}.out\n")
+            file.writelines(f"#SBATCH --error={outdir}/out_{run_id:>06}.out\n")
+            file.writelines(f"{remotec_path} {run_id} {lst_file}\n")
+        process = Popen(["sbatch", "--wait", job_file], cwd=rundir)
+        processes.append(process)
+
+    exitcodes = [process.wait() for process in processes]
