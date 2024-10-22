@@ -73,7 +73,7 @@ def slurm(rundir, remotec_path, lst_file_list):
         outdir = f"{rundir}/slurm"
         with open(job_file, "w") as file:
             file.writelines("#!/bin/bash\n")
-            file.writelines("#SBATCH --partition=single\n")
+            file.writelines("#SBATCH --partition=cpu-single\n")
             file.writelines("#SBATCH --ntasks=1\n")
             file.writelines("#SBATCH --time=6:00:00\n")
             file.writelines("#SBATCH --mem=8gb\n")
