@@ -95,6 +95,8 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
     outdir = f"{rundir}/slurm"
     num_jobs = len(lst_file_list)
 
+    start_time = time.time()
+
     with open(job_file, "w") as file:
         file.writelines("#!/bin/bash\n")
         file.writelines("#SBATCH --partition=cpu-single\n")
@@ -123,4 +125,8 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
     if job_id is None:
         raise RuntimeError("Failed to get SLURM job ID.")
 
-    os.system(f"sbatch --dependency=afterok:{job_id} --output={outdir}/slurm-%j.out --wrap='echo Job array {job_id} completed.' --wait")
+    os.system(f"sbatch --dependency=afterok:{job_id} --output='{outdir}/slurm-{job_id}.out' --wrap='echo Job array {job_id} completed.' --wait")
+
+    stop_time = time.time()
+    with open(f"{outdir}/slurm-{job_id}.out", "a") as file:
+        file.writelines(f"Total runtime: {stop_time - start_time:.2f} s.")
