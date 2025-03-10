@@ -13,8 +13,8 @@ def main(rundir, remotec_path, lst_file_list, scheduler):
             func = default
         case "condor":
             func = condor
-        case "slurm":
-            func = slurm
+        # case "slurm":  # use slurm_jobarrays
+        #     func = slurm
         case "slurm_jobarrays":
             func = slurm_jobarrays
         case _:
@@ -64,35 +64,34 @@ def condor(rundir, remotec_path, lst_file_list):
         time.sleep(10)
 
 
-def slurm(rundir, remotec_path, lst_file_list):
-    print("using scheduler slurm")
-    os.system(f"mkdir {rundir}/slurm")
-    processes = []
-    for i, lst_file in enumerate(lst_file_list):
-        # i starts at 0
-        run_id = str(i+1)
-        job_file = f"{rundir}/slurm/job_file_{run_id:>06}.sh"
-        outdir = f"{rundir}/slurm"
-        with open(job_file, "w") as file:
-            file.writelines("#!/bin/bash\n")
-            file.writelines("#SBATCH --partition=cpu-single\n")
-            file.writelines("#SBATCH --ntasks=1\n")
-            file.writelines("#SBATCH --time=6:00:00\n")
-            file.writelines("#SBATCH --mem=8gb\n")
-            file.writelines(f"#SBATCH --output={outdir}/out_{run_id:>06}.out\n")
-            file.writelines(f"#SBATCH --error={outdir}/out_{run_id:>06}.out\n")
-            file.writelines(f"{remotec_path} {run_id} {lst_file}\n")
-        process = Popen(["sbatch", "--wait", job_file], cwd=rundir)
-        processes.append(process)
-
-    exitcodes = [process.wait() for process in processes]
+# def slurm(rundir, remotec_path, lst_file_list):
+#     print("using scheduler slurm")
+#     os.system(f"mkdir {rundir}/slurm")
+#     processes = []
+#     for i, lst_file in enumerate(lst_file_list):
+#         # i starts at 0
+#         run_id = str(i+1)
+#         job_file = f"{rundir}/slurm/job_file_{run_id:>06}.sh"
+#         outdir = f"{rundir}/slurm"
+#         with open(job_file, "w") as file:
+#             file.writelines("#!/bin/bash\n")
+#             file.writelines("#SBATCH --partition=cpu-single\n")
+#             file.writelines("#SBATCH --ntasks=1\n")
+#             file.writelines("#SBATCH --time=6:00:00\n")
+#             file.writelines("#SBATCH --mem=8gb\n")
+#             file.writelines(
+#                 f"#SBATCH --output={outdir}/out_{run_id:>06}.out\n")
+#             file.writelines(f"#SBATCH --error={outdir}/out_{run_id:>06}.out\n")
+#             file.writelines(f"{remotec_path} {run_id} {lst_file}\n")
+#         process = Popen(["sbatch", "--wait", job_file], cwd=rundir)
+#         processes.append(process)
+#
+#     exitcodes = [process.wait() for process in processes]
 
 def slurm_jobarrays(rundir, remotec_path, lst_file_list):
     print("using scheduler slurm with job arrays")
-    os.system(f"mkdir {rundir}/slurm")
-
-    job_file = f"{rundir}/slurm/job_array.sh"
-    outdir = f"{rundir}/slurm"
+    outdir = f"{rundir}/slurm/run_remotec"
+    job_file = f"{outdir}/job_array.sh"
     num_jobs = len(lst_file_list)
 
     start_time = time.time()
@@ -107,7 +106,8 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
         file.writelines(f"#SBATCH --output={outdir}/out_%a.out\n")
         file.writelines(f"#SBATCH --error={outdir}/out_%a.out\n")
         file.writelines("printf -v padded_id '%06d' $SLURM_ARRAY_TASK_ID\n")
-        file.writelines(f"mv {outdir}/out_$SLURM_ARRAY_TASK_ID.out {outdir}/out_${{padded_id}}.out\n")
+        file.writelines(
+            f"mv {outdir}/out_$SLURM_ARRAY_TASK_ID.out {outdir}/out_${{padded_id}}.out\n")
 
         file.writelines("lst_file_list=(" + " ".join(lst_file_list) + ")\n")
         file.writelines("lst_file=${lst_file_list[$SLURM_ARRAY_TASK_ID-1]}\n")
@@ -119,13 +119,16 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
     # track all the smaller jobs.
     # after all the smaller jobs are done, a dummy job that does nothing is run. the python
     # script waits for this dummy job
-    result = subprocess.run(["sbatch", job_file], stdout=subprocess.PIPE, text=True)
-    job_id = next((word for word in result.stdout.split() if word.isdigit()), None)
+    result = subprocess.run(["sbatch", job_file],
+                            stdout=subprocess.PIPE, text=True)
+    job_id = next((word for word in result.stdout.split()
+                  if word.isdigit()), None)
 
     if job_id is None:
         raise RuntimeError("Failed to get SLURM job ID.")
 
-    os.system(f"sbatch --dependency=afterok:{job_id} --output='{outdir}/slurm-{job_id}.out' --wrap='echo Job array {job_id} completed.' --wait")
+    os.system(
+        f"sbatch --dependency=afterok:{job_id} --output='{outdir}/slurm-{job_id}.out' --wrap='echo Job array {job_id} completed.' --wait")
 
     stop_time = time.time()
     with open(f"{outdir}/slurm-{job_id}.out", "a") as file:
