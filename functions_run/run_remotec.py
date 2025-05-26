@@ -100,8 +100,8 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
         file.writelines("#!/bin/bash\n")
         file.writelines("#SBATCH --partition=cpu-single\n")
         file.writelines("#SBATCH --ntasks=1\n")
-        file.writelines("#SBATCH --time=12:00:00\n")
-        file.writelines("#SBATCH --mem=8gb\n")
+        file.writelines("#SBATCH --time=48:00:00\n")
+        file.writelines("#SBATCH --mem=16gb\n")
         file.writelines(f"#SBATCH --array=1-{num_jobs}\n")
         file.writelines(f"#SBATCH --output={outdir}/out_%a.out\n")
         file.writelines(f"#SBATCH --error={outdir}/out_%a.out\n")
@@ -115,10 +115,10 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
 
     # execute and wait
     # original job just starts the job array and kills itself right after
-    # this means that, to wait for all jobs to finish, we need to get the job_id to
-    # track all the smaller jobs.
-    # after all the smaller jobs are done, a dummy job that does nothing is run. the python
-    # script waits for this dummy job
+    # this means that, to wait for all jobs to finish, we need to get the
+    # job_id to track all the smaller jobs.
+    # after all the smaller jobs are done, a dummy job that does nothing is
+    # run. the python script waits for this dummy job
     result = subprocess.run(["sbatch", job_file],
                             stdout=subprocess.PIPE, text=True)
     job_id = next((word for word in result.stdout.split()
