@@ -93,6 +93,7 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
     outdir = f"{rundir}/slurm/run_remotec"
     job_file = f"{outdir}/job_array.sh"
     num_jobs = len(lst_file_list)
+    lst_file_path = lst_file_list[0].split("/LST/")[0]
 
     start_time = time.time()
 
@@ -103,14 +104,10 @@ def slurm_jobarrays(rundir, remotec_path, lst_file_list):
         file.writelines("#SBATCH --time=48:00:00\n")
         file.writelines("#SBATCH --mem=16gb\n")
         file.writelines(f"#SBATCH --array=1-{num_jobs}\n")
-        file.writelines(f"#SBATCH --output={outdir}/out_%a.out\n")
-        file.writelines(f"#SBATCH --error={outdir}/out_%a.out\n")
+        file.writelines(f"#SBATCH --output={outdir}/out_%06a.out\n")
+        file.writelines(f"#SBATCH --error={outdir}/out_%06a.out\n")
         file.writelines("printf -v padded_id '%06d' $SLURM_ARRAY_TASK_ID\n")
-        file.writelines(
-            f"mv {outdir}/out_$SLURM_ARRAY_TASK_ID.out {outdir}/out_${{padded_id}}.out\n")
-
-        file.writelines("lst_file_list=(" + " ".join(lst_file_list) + ")\n")
-        file.writelines("lst_file=${lst_file_list[$SLURM_ARRAY_TASK_ID-1]}\n")
+        file.writelines("lst_file=" + lst_file_path + "/LST/full_${padded_id}.lst\n")
         file.writelines(f"{remotec_path} $SLURM_ARRAY_TASK_ID $lst_file\n")
 
     # execute and wait
