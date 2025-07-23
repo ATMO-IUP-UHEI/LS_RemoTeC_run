@@ -1,8 +1,6 @@
 import sys
 import os
 
-from functions_run import check_rundir
-from functions_run import check_scriptdir
 from functions_run import read_config
 from functions_run import parallelize_lst_file
 from functions_run import parallelize_nml_file
@@ -12,11 +10,9 @@ from functions_run import remove_file_list
 
 # current working directory (must be RemoTeC rundir)
 rundir = os.getcwd()
-check_rundir.main(rundir)
 
 # location of this python script (contains settings.ini)
 scriptdir = os.path.dirname(__file__)
-check_scriptdir.main(scriptdir)
 
 # get settings
 config = read_config.main(
